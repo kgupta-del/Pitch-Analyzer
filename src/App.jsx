@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import NewAnalysis from './pages/NewAnalysis';
 import AnalysisDetail from './pages/AnalysisDetail';
 import Archive from './pages/Archive';
+import PitchBuilder from './pages/PitchBuilder';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -41,6 +42,7 @@ function AppRoutes() {
         <Route path="new-analysis" element={<NewAnalysis />} />
         <Route path="analysis/:id" element={<AnalysisDetail />} />
         <Route path="archive" element={<Archive />} />
+        <Route path="pitch-builder" element={<PitchBuilder />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

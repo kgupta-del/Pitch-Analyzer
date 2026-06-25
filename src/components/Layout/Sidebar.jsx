@@ -34,6 +34,16 @@ const navItems = [
       </svg>
     ),
   },
+  {
+    to: '/pitch-builder',
+    label: 'Pitch Builder',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={1.5}>
+        <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+    accent: 'emerald',
+  },
 ];
 
 export default function Sidebar() {
@@ -64,13 +74,16 @@ export default function Sidebar() {
           <NavLink
             key={item.to}
             to={item.to}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            className={({ isActive }) => {
+              const color = item.accent === 'emerald' ? 'emerald' : 'cyan';
+              return `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 isActive
-                  ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                  ? color === 'emerald'
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`
-            }
+              }`;
+            }}
           >
             {item.icon}
             {item.label}
