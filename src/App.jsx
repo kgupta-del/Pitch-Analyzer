@@ -1,5 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { trackPageView } from './services/analytics';
 import Layout from './components/Layout/Layout';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
@@ -23,8 +25,17 @@ function Spinner() {
   );
 }
 
+/** Reports a page_view to Firebase Analytics on every client-side navigation. */
+function usePageViewTracking() {
+  const { pathname, search } = useLocation();
+  useEffect(() => {
+    trackPageView(pathname + search);
+  }, [pathname, search]);
+}
+
 function AppRoutes() {
   const { loading } = useAuth();
+  usePageViewTracking();
   if (loading) return <Spinner />;
   return (
     <Routes>

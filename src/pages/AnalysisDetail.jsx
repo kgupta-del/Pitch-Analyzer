@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { db } from '../services/firebase';
 import { useAuth } from '../context/AuthContext';
 import { getMedia } from '../services/mediaStore';
+import { trackEvent } from '../services/analytics';
 import { exportToPDF } from '../services/pdfExport';
 import MediaPlayer from '../components/Analysis/MediaPlayer';
 import SentimentAnalysis from '../components/Analysis/SentimentAnalysis';
@@ -61,6 +62,7 @@ export default function AnalysisDetail() {
     setDeleting(true);
     try {
       await deleteDoc(doc(db, 'analyses', id));
+      trackEvent('analysis_deleted', { analysis_id: id, source_type: analysis?.sourceType });
       navigate('/dashboard');
     } catch (e) {
       console.error(e);
@@ -73,6 +75,11 @@ export default function AnalysisDetail() {
     setExporting(true);
     try {
       exportToPDF(analysis);
+      trackEvent('report_exported', {
+        analysis_id: id,
+        format: 'pdf',
+        source_type: analysis.sourceType,
+      });
     } finally {
       setExporting(false);
     }

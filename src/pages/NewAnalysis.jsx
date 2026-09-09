@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { transcribeMedia } from '../services/assemblyai';
 import { analyzePitch, analyzePDFPlan } from '../services/gemini';
 import { setMedia } from '../services/mediaStore';
+import { trackEvent } from '../services/analytics';
 
 const MEDIA_STEPS = [
   { key: 'processing', label: 'Processing audio...' },
@@ -33,7 +34,12 @@ export default function NewAnalysis() {
   const [error, setError] = useState('');
 
   const onDrop = useCallback((accepted) => {
-    if (accepted.length) setFile(accepted[0]);
+    if (!accepted.length) return;
+    setFile(accepted[0]);
+    trackEvent('file_selected', {
+      file_type: accepted[0].type,
+      file_size_mb: +(accepted[0].size / (1024 * 1024)).toFixed(2),
+    });
   }, []);
 
   const mediaDropzone = useDropzone({
@@ -58,6 +64,7 @@ export default function NewAnalysis() {
   const isAnalyzing = step !== null && step !== 'done';
 
   const handleModeSwitch = (newMode) => {
+    trackEvent('analysis_mode_switch', { mode: newMode });
     setMode(newMode);
     setFile(null);
     setStep(null);
@@ -68,12 +75,24 @@ export default function NewAnalysis() {
     if (!file) return;
     setError('');
 
+    const startedAt = Date.now();
+    const sizeMb = +(file.size / (1024 * 1024)).toFixed(2);
+    trackEvent('analysis_started', { source_type: mode, file_size_mb: sizeMb });
+
+    // Mirrored locally so the catch block can report where we actually failed
+    // (the `step` state read there would be the stale value from click time).
+    let atStep = null;
+    const advance = (s) => {
+      atStep = s;
+      setStep(s);
+    };
+
     try {
       if (mode === 'media') {
-        const transcript = await transcribeMedia(file, (s) => setStep(s));
-        setStep('analyzing');
+        const transcript = await transcribeMedia(file, advance);
+        advance('analyzing');
         const insights = await analyzePitch(transcript.text);
-        setStep('saving');
+        advance('saving');
         const docRef = await addDoc(collection(db, 'analyses'), {
           uid: user.uid,
           title: title || file.name.replace(/\.[^.]+$/, ''),
@@ -85,13 +104,20 @@ export default function NewAnalysis() {
           createdAt: serverTimestamp(),
         });
         setMedia(docRef.id, file);
+        trackEvent('analysis_completed', {
+          source_type: 'media',
+          media_type: file.type.startsWith('video') ? 'video' : 'audio',
+          file_size_mb: sizeMb,
+          duration_seconds: Math.round((Date.now() - startedAt) / 1000),
+          analysis_id: docRef.id,
+        });
         setStep('done');
         setTimeout(() => navigate(`/analysis/${docRef.id}`), 800);
       } else {
-        setStep('reading');
-        setStep('analyzing');
+        advance('reading');
+        advance('analyzing');
         const insights = await analyzePDFPlan(file);
-        setStep('saving');
+        advance('saving');
         const docRef = await addDoc(collection(db, 'analyses'), {
           uid: user.uid,
           title: title || file.name.replace(/\.[^.]+$/, ''),
@@ -100,11 +126,22 @@ export default function NewAnalysis() {
           insights,
           createdAt: serverTimestamp(),
         });
+        trackEvent('analysis_completed', {
+          source_type: 'pdf',
+          file_size_mb: sizeMb,
+          duration_seconds: Math.round((Date.now() - startedAt) / 1000),
+          analysis_id: docRef.id,
+        });
         setStep('done');
         setTimeout(() => navigate(`/analysis/${docRef.id}`), 800);
       }
     } catch (err) {
       console.error(err);
+      trackEvent('analysis_failed', {
+        source_type: mode,
+        failed_at_step: atStep ?? 'unknown',
+        error_message: err.message,
+      });
       setError(err.message);
       setStep(null);
     }

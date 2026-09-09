@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generatePitchPlan } from '../services/gemini';
+import { trackEvent } from '../services/analytics';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -119,11 +120,21 @@ export default function PitchBuilder() {
     setError('');
     setLoading(true);
     setPlan(null);
+    const startedAt = Date.now();
+    trackEvent('pitch_plan_started', {
+      fields_filled: Object.values(form).filter((v) => v?.trim()).length,
+      has_traction: Boolean(form.traction?.trim()),
+      has_funding_ask: Boolean(form.fundingAsk?.trim()),
+    });
     try {
       const result = await generatePitchPlan(form);
       setPlan(result);
+      trackEvent('pitch_plan_generated', {
+        duration_seconds: Math.round((Date.now() - startedAt) / 1000),
+      });
     } catch (err) {
       console.error(err);
+      trackEvent('pitch_plan_failed', { error_message: err.message });
       setError(err.message);
     } finally {
       setLoading(false);
@@ -131,6 +142,7 @@ export default function PitchBuilder() {
   };
 
   const handleReset = () => {
+    trackEvent('pitch_plan_reset');
     setPlan(null);
     setForm({});
     setError('');

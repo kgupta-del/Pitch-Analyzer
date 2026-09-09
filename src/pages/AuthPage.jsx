@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Common/Logo';
+import { trackEvent } from '../services/analytics';
 
 export default function AuthPage() {
   const [mode, setMode] = useState('login');
@@ -25,6 +26,7 @@ export default function AuthPage() {
       }
       navigate('/dashboard');
     } catch (err) {
+      trackEvent('auth_failed', { method: 'password', mode, error_code: err.code });
       setError(err.message.replace('Firebase: ', '').replace(/\(auth\/.*\)\.?/, '').trim());
     } finally {
       setLoading(false);
@@ -38,6 +40,7 @@ export default function AuthPage() {
       await loginWithGoogle();
       navigate('/dashboard');
     } catch (err) {
+      trackEvent('auth_failed', { method: 'google', mode, error_code: err.code });
       setError(err.message.replace('Firebase: ', '').replace(/\(auth\/.*\)\.?/, '').trim());
     } finally {
       setLoading(false);
@@ -60,11 +63,11 @@ export default function AuthPage() {
         <div className="bg-[#0d1f3a] border border-[#1a2d4d] rounded-2xl p-8">
           <div className="flex bg-[#060d1e] rounded-xl p-1 mb-6">
             <button
-              onClick={() => setMode('login')}
+              onClick={() => { setMode('login'); trackEvent('auth_mode_switch', { mode: 'login' }); }}
               className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${mode === 'login' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'text-gray-400 hover:text-white'}`}
             >Sign In</button>
             <button
-              onClick={() => setMode('register')}
+              onClick={() => { setMode('register'); trackEvent('auth_mode_switch', { mode: 'register' }); }}
               className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${mode === 'register' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'text-gray-400 hover:text-white'}`}
             >Create Account</button>
           </div>

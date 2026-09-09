@@ -77,6 +77,7 @@ pitch_analyzer/
 | `assemblyai.js` | Uploads file to AssemblyAI, polls until transcript is ready (up to 6 min), returns text and word-level data |
 | `gemini.js` | Sends transcript to Gemini with a structured prompt; parses the JSON response into analysis data |
 | `firebase.js` | Initializes Firebase Auth and Firestore with credentials from `.env` |
+| `analytics.js` | Initializes Firebase Analytics (GA4) and exposes `trackEvent` / `trackPageView` / `identifyUser` |
 | `mediaStore.js` | In-memory Map that holds Blob URLs for media playback within the current session |
 | `pdfExport.js` | Builds a branded PDF report using jsPDF with score cards, deal terms, shark verdicts, and transcript snippet |
 
@@ -151,9 +152,40 @@ VITE_FIREBASE_PROJECT_ID=
 VITE_FIREBASE_STORAGE_BUCKET=
 VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
+VITE_FIREBASE_MEASUREMENT_ID=
 VITE_ASSEMBLYAI_API_KEY=
 VITE_GEMINI_API_KEY=
 ```
+
+---
+
+## Analytics
+
+User interaction is tracked with **Firebase Analytics (GA4)**.
+
+**Setup:** in the Firebase console, open *Project settings → Integrations → Google Analytics* and enable it for the project, then copy the measurement ID (`G-XXXXXXXXXX`) from *Project settings → General → Your apps* into `VITE_FIREBASE_MEASUREMENT_ID`. Analytics is optional at runtime: with the variable unset, or in a browser where the SDK is unsupported, `trackEvent` is a silent no-op and the rest of the app is unaffected.
+
+`page_view` is reported on every client-side route change, and the signed-in Firebase UID is attached with `setUserId` so events can be tied to a user.
+
+| Event | Fired when | Key params |
+|---|---|---|
+| `page_view` | Any route change | `page_path`, `page_title` |
+| `sign_up` / `login` | Account created / signed in | `method` (`password`, `google`) |
+| `logout` | User signs out | — |
+| `auth_failed` | Sign-in or registration errors | `method`, `mode`, `error_code` |
+| `auth_mode_switch` | Toggling sign-in vs. create-account | `mode` |
+| `cta_click` | Landing page CTA pressed | `location` (`navbar`, `hero`, `footer`), `signed_in` |
+| `file_selected` | File dropped or picked | `file_type`, `file_size_mb` |
+| `analysis_mode_switch` | Toggling media vs. PDF upload | `mode` |
+| `analysis_started` | Analyze pressed | `source_type`, `file_size_mb` |
+| `analysis_completed` | Report saved to Firestore | `source_type`, `duration_seconds`, `analysis_id` |
+| `analysis_failed` | Transcription or AI step threw | `source_type`, `failed_at_step`, `error_message` |
+| `report_exported` | PDF export | `analysis_id`, `format` |
+| `analysis_deleted` | Report deleted | `analysis_id`, `source_type` |
+| `pitch_plan_started` | Pitch Builder generate pressed | `fields_filled`, `has_traction` |
+| `pitch_plan_generated` | Plan returned | `duration_seconds` |
+| `pitch_plan_failed` | Generation threw | `error_message` |
+| `pitch_plan_reset` | Builder form cleared | — |
 
 ---
 

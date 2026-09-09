@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Common/Logo';
+import { trackEvent } from '../services/analytics';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 32 },
@@ -107,6 +108,12 @@ export default function LandingPage() {
 
   const ctaTarget = user ? '/dashboard' : '/auth';
 
+  /** Landing CTAs are the top of the funnel — `location` tells them apart. */
+  const goToApp = (location) => {
+    trackEvent('cta_click', { location, signed_in: Boolean(user), destination: ctaTarget });
+    navigate(ctaTarget);
+  };
+
   return (
     <div className="min-h-screen bg-[#060d1e] text-white">
       {/* ── Navbar ── */}
@@ -125,7 +132,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             {user ? (
               <button
-                onClick={() => navigate('/dashboard')}
+                onClick={() => goToApp('navbar')}
                 className="bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors"
               >
                 Open App
@@ -190,7 +197,7 @@ export default function LandingPage() {
             className="flex flex-col sm:flex-row items-center justify-center gap-3"
           >
             <button
-              onClick={() => navigate(ctaTarget)}
+              onClick={() => goToApp('hero')}
               className="bg-cyan-500 hover:bg-cyan-400 text-black font-semibold px-6 py-3 rounded-xl text-sm transition-all hover:scale-105 active:scale-95 shadow-lg shadow-cyan-500/20"
             >
               Analyze Your Pitch Free →
@@ -318,7 +325,7 @@ export default function LandingPage() {
             custom={3}
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => navigate(ctaTarget)}
+            onClick={() => goToApp('footer')}
             className="bg-cyan-500 hover:bg-cyan-400 text-black font-semibold px-8 py-3.5 rounded-xl text-sm shadow-lg shadow-cyan-500/20 transition-colors"
           >
             Start Analyzing Free →

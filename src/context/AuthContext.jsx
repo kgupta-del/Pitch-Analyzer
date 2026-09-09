@@ -5,8 +5,10 @@ import {
   signInWithPopup,
   signOut,
   onAuthStateChanged,
+  getAdditionalUserInfo,
 } from 'firebase/auth';
 import { auth, googleProvider } from '../services/firebase';
+import { identifyUser, trackEvent } from '../services/analytics';
 
 const AuthContext = createContext(null);
 
@@ -18,19 +20,35 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
+      identifyUser(u);
     });
     return unsubscribe;
   }, []);
 
-  const loginWithEmail = (email, password) =>
-    signInWithEmailAndPassword(auth, email, password);
+  const loginWithEmail = async (email, password) => {
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    trackEvent('login', { method: 'password' });
+    return cred;
+  };
 
-  const registerWithEmail = (email, password) =>
-    createUserWithEmailAndPassword(auth, email, password);
+  const registerWithEmail = async (email, password) => {
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    trackEvent('sign_up', { method: 'password' });
+    return cred;
+  };
 
-  const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
+  const loginWithGoogle = async () => {
+    const cred = await signInWithPopup(auth, googleProvider);
+    const isNew = getAdditionalUserInfo(cred)?.isNewUser;
+    trackEvent(isNew ? 'sign_up' : 'login', { method: 'google' });
+    return cred;
+  };
 
-  const logout = () => signOut(auth);
+  const logout = async () => {
+    trackEvent('logout');
+    await signOut(auth);
+    identifyUser(null);
+  };
 
   return (
     <AuthContext.Provider value={{ user, loading, loginWithEmail, registerWithEmail, loginWithGoogle, logout }}>
